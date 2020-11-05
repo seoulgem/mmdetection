@@ -39,12 +39,12 @@ class CustomAug(object):
                 iaa.GammaContrast((0.7, 1.3)),
             ),
             sometimes(
-                iaa.Cutout(nb_iterations=1)
+                iaa.Cutout(nb_iterations=2)
             ),
         ])
 
     def __call__(self, results):
-        CustomAug = if np.random.rand() < self.CustomAug_ratio else False            
+        CustomAug = True if np.random.rand() < self.CustomAug_ratio else False            
         if CustomAug:
             image_aug = self.seq(images= [results['img']])
             image_aug = image_aug[0]
