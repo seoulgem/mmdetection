@@ -35,7 +35,9 @@ class CustomAug(object):
                 iaa.JpegCompression(compression=(80, 99))
             ),
             sometimes(
-                iaa.MultiplyAndAddToBrightness(mul=(0.7, 1.3)),
+                iaa.MultiplyAndAddToBrightness(mul=(0.7, 1.3)),                
+            ),
+            sometimes(
                 iaa.GammaContrast((0.7, 1.3)),
             ),
             sometimes(
