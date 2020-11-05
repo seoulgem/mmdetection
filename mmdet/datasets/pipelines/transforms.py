@@ -20,7 +20,45 @@ except ImportError:
     albumentations = None
     Compose = None
 
+import imgaug as ia
+import imgaug.augmenters as iaa
 
+@PIPELINES.register_module()
+class CustomAug(object):
+    def __init__(self, CustomAug_ratio=None):
+
+        sometimes = lambda aug: iaa.Sometimes(0.5, aug)
+        self.CustomAug_ratio = CustomAug_ratio
+        self.seq = iaa.Sequential([
+
+            sometimes(
+                iaa.JpegCompression(compression=(80, 99))
+            ),
+            sometimes(
+                iaa.MultiplyAndAddToBrightness(mul=(0.7, 1.3)),
+                iaa.GammaContrast((0.7, 1.3)),
+            ),
+            sometimes(
+                iaa.Cutout(nb_iterations=1)
+            ),
+        ])
+
+    def __call__(self, results):
+        CustomAug = if np.random.rand() < self.CustomAug_ratio else False            
+        if CustomAug:
+            image_aug = self.seq(images= [results['img']])
+            image_aug = image_aug[0]
+
+            results['img'] = image_aug
+
+        return results
+
+    def __repr__(self):
+        return self.__class__.__name__ + '(CustomAug_ratio={})'.format(
+            self.flip_ratio)
+
+
+    
 @PIPELINES.register_module()
 class Resize(object):
     """Resize images & bbox & mask.
