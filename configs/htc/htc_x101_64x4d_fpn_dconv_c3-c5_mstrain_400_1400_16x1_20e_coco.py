@@ -1,4 +1,5 @@
-_base_ = './htc_r50_fpn_1x_coco.py'
+#_base_ = './htc_r50_fpn_1x_coco.py'
+_base_ = './htc_without_semantic_r50_fpn_1x_coco.py'
 model = dict(
     pretrained='open-mmlab://resnext101_64x4d',
     backbone=dict(
