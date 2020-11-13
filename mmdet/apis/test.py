@@ -33,9 +33,19 @@ def single_gpu_test(model,
                 # numpy → torch for image
                 filp_ori = torch.from_numpy(filp_ori).permute(2, 0, 1).unsqueeze(0)
                 data['img'][0] = filp_ori
+                
             with torch.no_grad():
                 result = model(return_loss=False, rescale=True, **data)
 
+            if f==1: 
+                # 결과도 좌우 전환
+                result_maks = result[0][1]
+                for i, masks in enumerate(result_maks):
+                    if len(masks) == 0: continue
+                    for j, mask in enumerate(masks):
+                        fmask = cv2.flip( mask * 1 , 1)            
+                        result_maks[i][j] = fmask.astype(bool)                
+                
             batch_size = len(result)
             if show or out_dir:
                 if batch_size == 1 and isinstance(data['img'][0], torch.Tensor):
