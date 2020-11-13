@@ -3,6 +3,7 @@ import pickle
 import shutil
 import tempfile
 import time
+import cv2
 
 import mmcv
 import torch
