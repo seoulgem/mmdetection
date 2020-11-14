@@ -13,12 +13,32 @@ from mmcv.runner import get_dist_info
 
 from mmdet.core import encode_mask_results
 
+from pycocotools.coco import COCO
 
-def single_gpu_test(model,
+def single_gpu_test_custom(model,
                     data_loader,
                     show=False,
                     out_dir=None,
                     show_score_thr=0.3):
+  
+    # TODO: 딱봐도 알지?
+    annFile='/content/gdrive/My Drive/k-fashion/data/annotations/instances_test2017.json'
+    imagepath = '/content/mmdetection/data/test2017/'
+    coco=COCO(annFile)
+
+    cats = coco.loadCats(coco.getCatIds())
+    nms=[cat['name'] for cat in cats]
+    print('COCO categories: \n{}\n'.format(' '.join(nms)))
+
+    nms = set([cat['supercategory'] for cat in cats])
+    print('COCO supercategories: \n{}'.format(' '.join(nms)))
+
+    # imageid 만들기    
+    filenames={}
+    for image_id in coco.getImgIds():
+        filename = coco.loadImgs(image_id)[0]['file_name']
+        filenames[filename] = image_id
+
     model.eval()
     results = []
     dataset = data_loader.dataset
@@ -43,11 +63,17 @@ def single_gpu_test(model,
                     if len(masks) == 0: continue
                     for j, mask in enumerate(masks):
                         fmask = cv2.flip( mask * 1 , 1)            
-                        result[0][1][i][j] = fmask.astype(bool)                
+                        result[0][1][i][j] = fmask.astype(bool)     
+
+                # imageid 추가
+                result[0] = result[0] + tuple([  filenames[  data['img_metas'][0].data[0][0]['ori_filename']  ]  ])
+                
 
             else:
                 with torch.no_grad():
                     result = model(return_loss=False, rescale=True, **data)
+                    # imageid 추가
+                    result[0] = result[0] + tuple([  filenames[  data['img_metas'][0].data[0][0]['ori_filename']  ]  ])
                 
             batch_size = len(result)
             if show or out_dir:
@@ -80,12 +106,66 @@ def single_gpu_test(model,
 
             # encode mask results
             if isinstance(result[0], tuple):
-                result = [(bbox_results, encode_mask_results(mask_results))
-                        for bbox_results, mask_results in result]
+                result = [(bbox_results, encode_mask_results(mask_results), imageid)
+                        for bbox_results, mask_results, imageid in result]
             results.extend(result)
 
             for _ in range(batch_size):
                 prog_bar.update()
+                
+    return results
+
+
+def single_gpu_test(model,
+                    data_loader,
+                    show=False,
+                    out_dir=None,
+                    show_score_thr=0.3):
+    model.eval()
+    results = []
+    dataset = data_loader.dataset
+    prog_bar = mmcv.ProgressBar(len(dataset))
+    for i, data in enumerate(data_loader):
+        with torch.no_grad():
+            result = model(return_loss=False, rescale=True, **data)
+
+        batch_size = len(result)
+        if show or out_dir:
+            if batch_size == 1 and isinstance(data['img'][0], torch.Tensor):
+                img_tensor = data['img'][0]
+            else:
+                img_tensor = data['img'][0].data[0]
+            img_metas = data['img_metas'][0].data[0]
+            imgs = tensor2imgs(img_tensor, **img_metas[0]['img_norm_cfg'])
+            assert len(imgs) == len(img_metas)
+
+            for i, (img, img_meta) in enumerate(zip(imgs, img_metas)):
+                h, w, _ = img_meta['img_shape']
+                img_show = img[:h, :w, :]
+
+                ori_h, ori_w = img_meta['ori_shape'][:-1]
+                img_show = mmcv.imresize(img_show, (ori_w, ori_h))
+
+                if out_dir:
+                    out_file = osp.join(out_dir, img_meta['ori_filename'])
+                else:
+                    out_file = None
+
+                model.module.show_result(
+                    img_show,
+                    result[i],
+                    show=show,
+                    out_file=out_file,
+                    score_thr=show_score_thr)
+
+        # encode mask results
+        if isinstance(result[0], tuple):
+            result = [(bbox_results, encode_mask_results(mask_results))
+                      for bbox_results, mask_results in result]
+        results.extend(result)
+
+        for _ in range(batch_size):
+            prog_bar.update()
     return results
 
 
