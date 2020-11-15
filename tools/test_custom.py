@@ -203,7 +203,7 @@ def main():
             }
         datas.append(data)
 
-    kwargs = {} if eval_options is None else eval_options
+    kwargs = {} if args.eval_options is None else args.eval_options
     json_save_path = os.path.join( kwargs['jsonfile_prefix']+'.segm.json' )
 
     mmcv.dump(datas, json_save_path)
